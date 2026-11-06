@@ -4,6 +4,8 @@
     <Project Path="src/Chamados.Web/Chamados.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <File Path="ChamadoTests.cs" />
+    <File Path="RelogioFixo.cs" />
     <Project Path="tests/Chamados.Domain.Tests/Chamados.Domain.Tests.csproj" />
   </Folder>
 </Solution>

@@ -1,0 +1,28 @@
+@Chamados.Web_HostAddress = http://localhost:5080
+
+GET {{Chamados.Web_HostAddress}}/chamados
+Accept: application/json
+
+###
+
+GET {{Chamados.Web_HostAddress}}/chamados?status=EmAtendimento
+Accept: application/json
+
+###
+
+GET {{Chamados.Web_HostAddress}}/chamados?prioridadeMinima=Alta&texto=SALA
+Accept: application/json
+
+###
+
+GET {{Chamados.Web_HostAddress}}/chamados/estatisticas
+Accept: application/json
+
+###
+
+POST {{Chamados.Web_HostAddress}}/chamados/00000000-0000-0000-0000-000000000000/atendimento
+Content-Type: application/json
+
+{
+  "responsavel": "Equipe de TI"
+}
