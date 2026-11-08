@@ -1,28 +1,38 @@
-@Chamados.Web_HostAddress = http://localhost:5080
+# Requisições da API JSON. As páginas (formulários) são testadas no navegador.
+@base = http://localhost:5080
 
-GET {{Chamados.Web_HostAddress}}/chamados
-Accept: application/json
+### Lista todos, ordenados por prioridade
+GET {{base}}/api/chamados
 
-###
+### Filtros combinados
+GET {{base}}/api/chamados?status=Aberto&prioridadeMinima=Alta
 
-GET {{Chamados.Web_HostAddress}}/chamados?status=EmAtendimento
-Accept: application/json
+### Estatísticas
+GET {{base}}/api/chamados/estatisticas
 
-###
-
-GET {{Chamados.Web_HostAddress}}/chamados?prioridadeMinima=Alta&texto=SALA
-Accept: application/json
-
-###
-
-GET {{Chamados.Web_HostAddress}}/chamados/estatisticas
-Accept: application/json
-
-###
-
-POST {{Chamados.Web_HostAddress}}/chamados/00000000-0000-0000-0000-000000000000/atendimento
+### Abre um chamado pela API (o mesmo ChamadoServico do formulário)
+POST {{base}}/api/chamados
 Content-Type: application/json
 
 {
-  "responsavel": "Equipe de TI"
+  "titulo": "Aberto pela API",
+  "prioridade": "Alta"
+}
+
+### Prioridade inexistente: o domínio recusa e o filtro responde 400 (Problem Details)
+POST {{base}}/api/chamados
+Content-Type: application/json
+
+{
+  "titulo": "Prioridade inválida",
+  "prioridade": 99
+}
+
+### Inicia atendimento: copie um Id com status Aberto da listagem
+@id = 00000000-0000-0000-0000-000000000000
+POST {{base}}/api/chamados/{{id}}/atendimento
+Content-Type: application/json
+
+{
+  "responsavel": "Elétrica"
 }
