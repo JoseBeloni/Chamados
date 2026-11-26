@@ -4,7 +4,9 @@ using System.Text.Json.Serialization;
 using Chamados.Domain;
 using Chamados.Web;
 using Chamados.Web.Api;
+using Chamados.Web.Components;
 using Chamados.Web.Configuracao;
+using Chamados.Web.Estado;
 using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,11 +24,20 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IChamadoRepositorio>(sp =>
 {
     var simulacao = sp.GetRequiredService<IOptions<SimulacaoOptions>>().Value;
-    return new RepositorioChamadosEmMemoria(
+    IChamadoRepositorio repositorio = new RepositorioChamadosEmMemoria(
         sp.GetRequiredService<TimeProvider>(),
         TimeSpan.FromMilliseconds(simulacao.LatenciaMs));
+
+    // Módulo 6: falhas simuladas na listagem, para exercitar o tratamento de erro da fila.
+    // Decorator: mesma interface, comportamento acrescentado por fora do domínio.
+    return simulacao.FalhaNaListagemACada > 0
+        ? new RepositorioComFalhaSimulada(repositorio, simulacao.FalhaNaListagemACada)
+        : repositorio;
 });
 builder.Services.AddScoped<ChamadoServico>();
+
+// Estado compartilhado entre componentes Blazor. Scoped = um por circuito (uma aba conectada).
+builder.Services.AddScoped<EstadoFila>();
 
 // Interface web: Razor Pages (formulários) e JSON da API.
 builder.Services.AddRazorPages()
@@ -40,6 +51,10 @@ builder.Services.AddRazorPages()
         mensagens.SetValueMustNotBeNullAccessor(_ => "Preencha este campo.");
     });
 builder.Services.AddProblemDetails();
+
+// Blazor: componentes Razor renderizados no servidor, com interatividade por conexão (SignalR).
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
@@ -71,14 +86,33 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+// Respostas de erro sem corpo (404 de rota inexistente, NotFound() de uma página, 400)
+// são reexecutadas em /Erro/{código}, com o layout do site. Só fora de /api:
+// a API continua respondendo JSON, nunca HTML.
+app.UseWhen(
+    contexto => !contexto.Request.Path.StartsWithSegments("/api"),
+    ramo => ramo.UseStatusCodePagesWithReExecute("/Erro/{0}"));
+
+// Cultura pt-BR para formatar datas e números, nas páginas e nos circuitos do Blazor.
+// A primeira cultura da lista é a padrão; outras entrariam aqui quando houver tradução.
+app.UseRequestLocalization("pt-BR");
+
 app.UseHttpsRedirection();
 app.UseRouting();
+
+// Exigido pelos endpoints de componentes Razor: confere o token dos formulários Blazor.
+// As Razor Pages continuam validando o próprio token como antes.
+app.UseAntiforgery();
 
 // ============ 3. Endpoints: quem responde a cada rota ============
 
 app.MapStaticAssets();
 app.MapRazorPages().WithStaticAssets();
 app.MapApiChamados();
+
+// Páginas Blazor (componentes com @page), convivendo com as Razor Pages na mesma aplicação.
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode();
 
 app.MapGet("/api/status", () => Enum.GetNames<StatusChamado>());
 

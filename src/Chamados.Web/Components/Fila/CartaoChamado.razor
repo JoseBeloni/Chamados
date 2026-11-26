@@ -1,0 +1,139 @@
+﻿@* Um chamado na fila. Recebe dados por parâmetro (pai → filho)
+   e avisa o pai por EventCallback (filho → pai). *@
+<article class="cartao-fila" aria-labelledby="titulo-@Chamado.Id">
+    <header>
+        <a id="titulo-@Chamado.Id" href="/Chamados/Detalhes/@Chamado.Id">@Chamado.Titulo</a>
+        <Selo Valor="Chamado.Prioridade" />
+    </header>
+
+    <p class="apoio">
+        Aberto em @Chamado.CriadoEm.DataHora()
+        @if (Chamado.Responsavel is not null)
+        {
+            <text> · @Chamado.Responsavel</text>
+        }
+    </p>
+
+    @if (acao is null)
+    {
+        <div class="acoes">
+            @if (Chamado.Status == StatusChamado.Aberto)
+            {
+                <button type="button" disabled="@Desabilitado" @onclick="() => Escolher(TipoTransicao.Iniciar)">Iniciar</button>
+            }
+            else
+            {
+                <button type="button" disabled="@Desabilitado" @onclick="() => Escolher(TipoTransicao.Resolver)">Resolver</button>
+            }
+            <button type="button" class="secundario" disabled="@Desabilitado" @onclick="() => Escolher(TipoTransicao.Cancelar)">Cancelar</button>
+            @* Módulo 6: editar sem sair da fila. O cartão só avisa qual chamado; a página abre o formulário. *@
+            <button type="button" class="link" disabled="@Desabilitado" @onclick="() => AoEditar.InvokeAsync(Chamado.Id)"
+                    aria-label="Editar @Chamado.Titulo">
+                Editar
+            </button>
+        </div>
+    }
+    else
+    {
+        <label>
+            @RotuloDoCampo
+            @* @ref guarda a referência ao elemento, para levar o foco até ele. *@
+            <input @ref="campo" @bind="texto" @bind:event="oninput" @onkeydown="AoTeclar" autocomplete="off"
+                   aria-invalid="@(erro is not null ? "true" : null)" aria-describedby="@(erro is not null ? $"erro-{Chamado.Id}" : null)" />
+        </label>
+        @if (erro is not null)
+        {
+            <span class="erro" id="erro-@Chamado.Id">@erro</span>
+        }
+        <div class="acoes">
+            <button type="button" disabled="@Desabilitado" @onclick="ConfirmarAsync">Confirmar</button>
+            <button type="button" class="secundario" @onclick="Desistir">Voltar</button>
+        </div>
+    }
+</article>
+
+@code {
+    // Estado próprio do cartão: qual ação está aberta e o que foi digitado.
+    private TipoTransicao? acao;
+    private string texto = string.Empty;
+    private string? erro;
+    private ElementReference campo;
+    private bool focarCampo;
+
+    [Parameter, EditorRequired]
+    public ResumoChamado Chamado { get; set; } = default!;
+
+    /// <summary>Disparado quando o usuário confirma uma ação com o campo preenchido.</summary>
+    [Parameter]
+    public EventCallback<PedidoTransicao> AoConfirmar { get; set; }
+
+    /// <summary>Disparado quando o usuário pede para editar o chamado.</summary>
+    [Parameter]
+    public EventCallback<Guid> AoEditar { get; set; }
+
+    /// <summary>Nome sugerido no campo Responsável (lembrado pelo navegador).</summary>
+    [Parameter]
+    public string? ResponsavelPadrao { get; set; }
+
+    /// <summary>Verdadeiro enquanto a página executa outra ação: evita clique duplo.</summary>
+    [Parameter]
+    public bool Desabilitado { get; set; }
+
+    private string RotuloDoCampo => acao switch
+    {
+        TipoTransicao.Iniciar => "Responsável",
+        TipoTransicao.Resolver => "Solução aplicada",
+        _ => "Motivo do cancelamento"
+    };
+
+    private void Escolher(TipoTransicao tipo)
+    {
+        acao = tipo;
+        texto = tipo == TipoTransicao.Iniciar ? ResponsavelPadrao ?? string.Empty : string.Empty;
+        erro = null;
+        focarCampo = true;
+    }
+
+    private void Desistir() => acao = null;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // O campo só existe depois da renderização: por isso o foco vai aqui, e não em Escolher.
+        if (focarCampo)
+        {
+            focarCampo = false;
+            await campo.FocusAsync();
+        }
+    }
+
+    private async Task AoTeclar(KeyboardEventArgs evento)
+    {
+        if (evento.Key == "Enter")
+        {
+            await ConfirmarAsync();
+        }
+        else if (evento.Key == "Escape")
+        {
+            Desistir();
+        }
+    }
+
+    private async Task ConfirmarAsync()
+    {
+        if (acao is not { } tipo)
+        {
+            return;
+        }
+
+        // Conforto para o usuário. O domínio valida de novo quando a página chamar o serviço.
+        if (string.IsNullOrWhiteSpace(texto))
+        {
+            erro = "Preencha este campo antes de confirmar.";
+            focarCampo = true;
+            return;
+        }
+
+        acao = null;
+        await AoConfirmar.InvokeAsync(new PedidoTransicao(Chamado.Id, tipo, texto));
+    }
+}

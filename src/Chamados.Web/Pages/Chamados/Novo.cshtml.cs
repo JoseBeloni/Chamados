@@ -12,7 +12,7 @@ public sealed class NovoModel(ChamadoServico servico, ILogger<NovoModel> logger)
 {
     // [BindProperty] liga os campos do formulário (name="Input.Titulo"...) a esta propriedade no POST.
     [BindProperty]
-    public NovoChamadoInput Input { get; set; } = new();
+    public ChamadoInput Input { get; set; } = new();
 
     public void OnGet()
     {
