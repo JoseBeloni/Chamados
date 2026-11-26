@@ -1,0 +1,18 @@
+﻿@page "{codigo:int?}"
+@model ErroModel
+@{
+    ViewData["Title"] = Model.Titulo;
+}
+
+<section class="pagina-erro">
+    <p class="codigo-http">@Model.Codigo</p>
+    <h1>@Model.Titulo</h1>
+    <p>@Model.Mensagem</p>
+    @if (Model.CaminhoOriginal is not null)
+    {
+        @* Codificado pelo Razor: um caminho com <script> aparece como texto. *@
+        <p class="apoio">Endereço pedido: <code>@Model.CaminhoOriginal</code></p>
+    }
+    <p><a class="botao" asp-page="/Chamados/Index">Ir para a lista de chamados</a></p>
+    <p class="apoio">Se o problema continuar, informe ao suporte o código <code>@Model.CodigoRequisicao</code>.</p>
+</section>

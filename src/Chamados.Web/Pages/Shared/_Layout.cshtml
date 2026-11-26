@@ -1,0 +1,37 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] · Chamados</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <header class="topo">
+        <a class="marca" asp-page="/Index">Chamados</a>
+        @* View Component: tem lógica e dependências próprias, ao contrário de uma partial. *@
+        <vc:resumo-status />
+        <nav>
+            @* Página Blazor (Módulo 5): link comum, porque não é uma Razor Page. *@
+            <a href="/atendimento">Atendimento</a>
+            <a asp-page="/Chamados/Index">Lista</a>
+            <a class="botao" asp-page="/Chamados/Novo">Novo chamado</a>
+        </nav>
+    </header>
+
+    <main class="conteudo">
+        @* Mensagem de uma única leitura: gravada antes do redirect, lida aqui e descartada. *@
+        @if (TempData["Mensagem"] is string mensagem)
+        {
+            <p class="aviso" role="status">@mensagem</p>
+        }
+
+        @RenderBody()
+    </main>
+
+    <footer class="rodape">Chamados · Módulo 5 · Blazor e componentes Razor</footer>
+
+    @* Cada página pode acrescentar scripts aqui com @section Scripts { ... }. *@
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
